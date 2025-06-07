@@ -1,0 +1,24 @@
+[project]
+name = "geobot"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Jason Kolbly",email = "jason@rscheme.org"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "discord-py (>=2.5.2,<3.0.0)",
+    "aiohttp (>=3.11.18,<4.0.0)",
+    "geopy (>=2.4.1,<3.0.0)"
+]
+
+[tool.poetry]
+packages = [{include = "geobot", from = "src"}]
+
+[tool.poetry.scripts]
+start = "geobot.bot:start"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
