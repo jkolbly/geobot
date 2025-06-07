@@ -130,7 +130,7 @@ def start():
 
     @geo.command(name="close", description="Close an image tag.")
     @discord.app_commands.describe(tag="The tag to close.")
-    @admin_only()
+    @subscriber_admin_only()
     async def close_image(ctx: commands.Context, tag: str):
         await GEO.close_image(tag)
         await ctx.reply(f"Tag `{tag}` has been closed.")
