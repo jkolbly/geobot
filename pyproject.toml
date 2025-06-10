@@ -15,7 +15,6 @@ dependencies = [
 
 [tool.poetry]
 packages = [{include = "geobot", from = "src"}]
-package-mode = false
 
 [tool.poetry.scripts]
 start = "geobot.bot:start"
