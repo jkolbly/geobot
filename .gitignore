@@ -197,3 +197,6 @@ pyrightconfig.json
 
 ### Discord token
 token
+
+### Data file
+data.json
