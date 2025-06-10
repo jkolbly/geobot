@@ -184,6 +184,7 @@ class Geoguesser():
             self.subscribed = set()
             self.admins = set([OWNER_CHANNEL])
             self.images = {}
+            self.closed_images = []
             self.scores = {}
             self.maxdist = WORLD_MAXDIST
 
