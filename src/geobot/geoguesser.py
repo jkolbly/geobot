@@ -240,11 +240,16 @@ class Geoguesser():
         with open(pathlib.Path(IMAGES_PATH, filename), "wb+") as f:
             f.write(image_bytes.getbuffer())
 
-        image_messages = await self.message_subscribers(
-            content=f"# New image to guess:\n### Image tag: `{real_tag}`",
-            file=discord.File(image_bytes, filename)
-        )
-        image_messages = [MessageID(message=message) for message in image_messages]
+        messages: list[discord.Message] = []
+        for id in self.subscribed:
+            channel = await get_channel(self.bot, id)
+            messages.append(
+                await channel.send(
+                    content=f"# New image to guess:\n### Image tag: `{real_tag}`",
+                    file=discord.File(image_bytes, filename)
+                )
+            )
+        image_messages: list[MessageID] = [MessageID(message=message) for message in messages]
 
         guess_command = f"/geo guess {real_tag} <lat> <long>"
         guesshint_messages = await self.message_subscribers(
