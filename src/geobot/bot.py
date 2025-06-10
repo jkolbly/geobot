@@ -52,7 +52,7 @@ def start():
     async def sync(ctx: commands.Context):
         if ctx.guild is not None:
             bot.tree.copy_global_to(guild=ctx.guild) # type: ignore
-        synced =  await bot.tree.sync(guild=None)
+        synced = await bot.tree.sync(guild=None)
         await ctx.reply(f"Synced commands/groups {', '.join('`' + s.name + '`' for s in synced)} to all channels.")
 
     @geo.command(name="subscribe", description="Subscribe this channel to geobot.")
