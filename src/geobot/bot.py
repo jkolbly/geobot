@@ -133,8 +133,7 @@ def start():
     @subscriber_admin_only()
     async def close_image(ctx: commands.Context, tag: str):
         await GEO.close_image(tag)
-        if ctx.channel.id not in GEO.subscribed:
-            await ctx.reply(f"Tag `{tag}` has been closed.")
+        await ctx.reply(f"Tag `{tag}` has been closed.")
 
     @geo.command(name="reset", description="Reset all scores.")
     @admin_only()
