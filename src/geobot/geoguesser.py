@@ -246,7 +246,7 @@ class Geoguesser():
             messages.append(
                 await channel.send(
                     content=f"# New image to guess:\n### Image tag: `{real_tag}`",
-                    file=discord.File(image_bytes, filename)
+                    file=discord.File(image_bytes.getvalue(), filename)
                 )
             )
         image_messages: list[MessageID] = [MessageID(message=message) for message in messages]
