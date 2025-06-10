@@ -122,7 +122,7 @@ class ImageGame():
             filename: str,
             image_messages: list[MessageID],
             guesshint_messages: list[MessageID],
-            guesses: dict[int, Guess] = {}
+            guesses: dict[int, Guess] | None = None
         ):
         self.latitude = lat
         self.longitude = long
@@ -130,7 +130,7 @@ class ImageGame():
         self.filename = filename
         self.image_messages = image_messages
         self.guesshint_messages = guesshint_messages
-        self.guesses = guesses
+        self.guesses = {} if guesses is None else guesses
 
     def as_ser(self) -> dict:
         return {
