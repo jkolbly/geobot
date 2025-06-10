@@ -362,10 +362,38 @@
                     }
                 }
             }
+        },
+        {
+            "filename": "extol.png",
+            "latitude": 10.0,
+            "longitude": 10.0,
+            "tag": "extol",
+            "image_messages": [
+                {
+                    "channel": 1373073338989023355,
+                    "message": 1382134835488886906
+                }
+            ],
+            "guesshint_messages": [
+                {
+                    "channel": 1373073338989023355,
+                    "message": 1382134837409874021
+                }
+            ],
+            "guesses": {
+                "480515412182958080": {
+                    "latitude": 10.0,
+                    "longitude": 10.0,
+                    "message": {
+                        "channel": 1373073338989023355,
+                        "message": 1382134928111702036
+                    }
+                }
+            }
         }
     ],
     "scores": {
-        "480515412182958080": 3973
+        "480515412182958080": 8973
     },
     "maxdist": 14916862
 }

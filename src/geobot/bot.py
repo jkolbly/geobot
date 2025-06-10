@@ -95,7 +95,7 @@ def start():
     async def message_all(ctx: commands.Context, message: str):
         await GEO.message_subscribers(message)
             
-    @geo.command(name="image", description="Create an image tag for the attached image.")
+    @bot.command(name="image", description="Create an image tag for the attached image.")
     @discord.app_commands.describe(latitude="Latitude (in degrees) where image was taken.")
     @discord.app_commands.describe(longitude="Longitude (in degrees) where image was taken.")
     @discord.app_commands.describe(tag="The tag to use for this image. If not provided, one will be randomly generated.")
