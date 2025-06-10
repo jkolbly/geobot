@@ -1,7 +1,7 @@
 [project]
 name = "geobot"
 version = "0.1.0"
-description = ""
+description = "A bot for playing Geoguesser in Discord."
 authors = [
     {name = "Jason Kolbly",email = "jason@rscheme.org"}
 ]
