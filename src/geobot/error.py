@@ -39,8 +39,8 @@ async def handle_error(ctx: commands.Context, error):
             available_tags_str = ", ".join(f"`{tag}`" for tag in error.original.available_tags)
             await ctx.reply(f"`{error.original.tag}` is not the tag of an active geo image.\nActive tags are: {available_tags_str}.")
         else:
-            logging.error(f"Unknown exception while executing command {ctx.command}")
-            traceback.print_exception(type(error.original), error.original, error.original.__traceback__, file=sys.stderr)
+            logger.exception(f"Unknown exception while executing command {ctx.command}",
+                             exc_info=(type(error.original), error.original, error.original.__traceback__))
     elif isinstance(error, commands.errors.CheckFailure):
         await ctx.reply(f"This channel doesn't have permission to run command {ctx.command}.")
     elif isinstance(error, commands.errors.MissingRequiredArgument):
@@ -48,5 +48,4 @@ async def handle_error(ctx: commands.Context, error):
     elif isinstance(error, commands.errors.BadArgument) and ctx.command is not None:
         await ctx.reply(f"Incorrect arguments to command `{ctx.command}`.")
     else:
-        logging.error(f"Ignoring exception in command {ctx.command}")
-        traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
+        logger.exception(f"Ignoring exception in command {ctx.command}", exc_info=(type(error), error, error.__traceback__))

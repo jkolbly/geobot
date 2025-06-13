@@ -4,9 +4,12 @@ import pathlib
 import aiohttp
 import io
 import typing
+import logging
 
 from . import geoguesser
 from . import error
+
+discord_handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="a")
 
 TOKEN_PATH = pathlib.Path(pathlib.Path(__file__).parent, "token")
 
@@ -172,7 +175,7 @@ def start():
     with open(TOKEN_PATH) as f:
         token = f.read().strip()
 
-    bot.run(token, reconnect=True)
+    bot.run(token, reconnect=True, log_handler=discord_handler)
 
 if __name__ == "__main__":
     start()
