@@ -200,3 +200,6 @@ token
 
 ### Data file
 data.json
+
+### Log file
+error.log
