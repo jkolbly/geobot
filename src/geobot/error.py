@@ -2,6 +2,13 @@ from discord.ext import commands
 import traceback
 import sys
 import typing
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler("error.log")
+fh.setLevel(logging.DEBUG)
+logger.addHandler(fh)
 
 class SubscriberOnly(commands.CheckFailure):
     pass
@@ -32,7 +39,7 @@ async def handle_error(ctx: commands.Context, error):
             available_tags_str = ", ".join(f"`{tag}`" for tag in error.original.available_tags)
             await ctx.reply(f"`{error.original.tag}` is not the tag of an active geo image.\nActive tags are: {available_tags_str}.")
         else:
-            print(f"Unknown exception while executing command {ctx.command}", file=sys.stderr)
+            logging.error(f"Unknown exception while executing command {ctx.command}")
             traceback.print_exception(type(error.original), error.original, error.original.__traceback__, file=sys.stderr)
     elif isinstance(error, commands.errors.CheckFailure):
         await ctx.reply(f"This channel doesn't have permission to run command {ctx.command}.")
@@ -41,5 +48,5 @@ async def handle_error(ctx: commands.Context, error):
     elif isinstance(error, commands.errors.BadArgument) and ctx.command is not None:
         await ctx.reply(f"Incorrect arguments to command `{ctx.command}`.")
     else:
-        print(f"Ignoring exception in command {ctx.command}", file=sys.stderr)
+        logging.error(f"Ignoring exception in command {ctx.command}")
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
