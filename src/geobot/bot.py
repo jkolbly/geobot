@@ -177,6 +177,9 @@ def start():
     while True:
         try:
             bot.run(token)
+        except KeyboardInterrupt as e:
+            print(traceback.format_exc(), file=sys.stderr)
+            return
         except Exception as e:
             print(traceback.format_exc(), file=sys.stderr)
 
