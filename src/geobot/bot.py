@@ -4,6 +4,8 @@ import pathlib
 import aiohttp
 import io
 import typing
+import traceback
+import sys
 
 from . import geoguesser
 from . import error
@@ -172,7 +174,11 @@ def start():
     with open(TOKEN_PATH) as f:
         token = f.read().strip()
 
-    bot.run(token)
+    while True:
+        try:
+            bot.run(token)
+        except Exception as e:
+            print(traceback.format_exc(), file=sys.stderr)
 
 if __name__ == "__main__":
     start()
