@@ -176,7 +176,7 @@ def start():
 
     while True:
         try:
-            bot.run(token)
+            bot.run(token, reconnect=True)
         except KeyboardInterrupt as e:
             print(traceback.format_exc(), file=sys.stderr)
             return
