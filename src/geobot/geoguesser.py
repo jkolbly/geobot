@@ -19,12 +19,18 @@ DATA_PATH = pathlib.Path(PARENT_PATH, "data")
 JSON_PATH = pathlib.Path(DATA_PATH, "data.json")
 IMAGES_PATH = pathlib.Path(DATA_PATH, "images")
 
+
 # The information needed to uniquely ID a message
-class MessageID():
+class MessageID:
     channel_id: int
     message_id: int
 
-    def __init__(self, message: typing.Optional[discord.Message] = None, channel_id: int = 0, message_id: int = 0):
+    def __init__(
+        self,
+        message: typing.Optional[discord.Message] = None,
+        channel_id: int = 0,
+        message_id: int = 0,
+    ):
         if message is None:
             self.channel_id = channel_id
             self.message_id = message_id
@@ -37,35 +43,43 @@ class MessageID():
             "channel": self.channel_id,
             "message": self.message_id,
         }
-    
+
     async def get_message(self, bot: commands.Bot) -> discord.Message:
         channel = await get_channel(bot, self.channel_id)
         return await channel.fetch_message(self.message_id)
-    
+
     @classmethod
     def from_ser(cls, ser: dict) -> typing.Self:
-        return cls(
-            channel_id = ser["channel"],
-            message_id = ser["message"]
-        )
-    
-async def get_channel(bot: commands.Bot, id: int) -> typing.Union[discord.TextChannel, discord.DMChannel]:
+        return cls(channel_id=ser["channel"], message_id=ser["message"])
+
+
+async def get_channel(
+    bot: commands.Bot, id: int
+) -> typing.Union[discord.TextChannel, discord.DMChannel]:
     channel = await bot.fetch_channel(id)
-    if isinstance(channel, discord.TextChannel) or isinstance(channel, discord.DMChannel):
+    if isinstance(channel, discord.TextChannel) or isinstance(
+        channel, discord.DMChannel
+    ):
         return channel
     else:
-        raise TypeError(f"Subscribed channel {id} is not a TextChannel or DMChannel (is {type(channel)})")
-    
+        raise TypeError(
+            f"Subscribed channel {id} is not a TextChannel or DMChannel (is {type(channel)})"
+        )
+
+
 def google_maps_url(lat: float, long: float):
     return f"https://www.google.com/maps/search/?api=1&query={lat}%2C{long}"
+
 
 def google_maps_linked_url(lat: float, long: float):
     return f"[{print_coord_tuple(lat, long)}]( {google_maps_url(lat, long)} )"
 
+
 def print_coord_tuple(lat: float, long: float):
     return f"{lat:.7f}, {long:.7f}"
 
-class Guess():
+
+class Guess:
     latitude: float
     longitude: float
     message: MessageID
@@ -77,26 +91,25 @@ class Guess():
 
     def google_maps_url(self):
         return google_maps_url(self.latitude, self.longitude)
-    
+
     def google_maps_linked_url(self):
         return google_maps_linked_url(self.latitude, self.longitude)
-    
+
     def as_ser(self) -> dict:
         return {
             "latitude": self.latitude,
             "longitude": self.longitude,
-            "message": self.message.as_ser()
+            "message": self.message.as_ser(),
         }
-    
+
     @classmethod
     def from_ser(cls, ser: dict) -> typing.Self:
         return cls(
-            ser["latitude"],
-            ser["longitude"],
-            MessageID.from_ser(ser["message"])
+            ser["latitude"], ser["longitude"], MessageID.from_ser(ser["message"])
         )
 
-class ImageGame():
+
+class ImageGame:
     # Image filename
     filename: str
 
@@ -115,15 +128,15 @@ class ImageGame():
     guesses: dict[int, Guess]
 
     def __init__(
-            self,
-            lat: float,
-            long: float,
-            tag: str,
-            filename: str,
-            image_messages: list[MessageID],
-            guesshint_messages: list[MessageID],
-            guesses: dict[int, Guess] | None = None
-        ):
+        self,
+        lat: float,
+        long: float,
+        tag: str,
+        filename: str,
+        image_messages: list[MessageID],
+        guesshint_messages: list[MessageID],
+        guesses: dict[int, Guess] | None = None,
+    ):
         self.latitude = lat
         self.longitude = long
         self.tag = tag
@@ -140,22 +153,43 @@ class ImageGame():
             "tag": self.tag,
             "image_messages": [m.as_ser() for m in self.image_messages],
             "guesshint_messages": [m.as_ser() for m in self.guesshint_messages],
-            "guesses": { user: guess.as_ser() for user,guess in self.guesses.items() }
+            "guesses": {user: guess.as_ser() for user, guess in self.guesses.items()},
         }
-    
+
     @classmethod
     def from_ser(cls, ser: dict) -> typing.Self:
         return cls(
-            lat = ser["latitude"],
-            long = ser["longitude"],
-            tag = ser["tag"],
-            filename = ser["filename"],
-            image_messages = [ MessageID.from_ser(id) for id in ser["image_messages"] ],
-            guesshint_messages = [ MessageID.from_ser(id) for id in ser["guesshint_messages"] ],
-            guesses = { int(user): Guess.from_ser(guess) for user, guess in ser["guesses"].items() }
+            lat=ser["latitude"],
+            long=ser["longitude"],
+            tag=ser["tag"],
+            filename=ser["filename"],
+            image_messages=[MessageID.from_ser(id) for id in ser["image_messages"]],
+            guesshint_messages=[
+                MessageID.from_ser(id) for id in ser["guesshint_messages"]
+            ],
+            guesses={
+                int(user): Guess.from_ser(guess)
+                for user, guess in ser["guesses"].items()
+            },
         )
 
-class Geoguesser():
+
+# A collection of images (e.g. my Norway trip)
+class Trip:
+    # Unique ID. Can contain letters, numbers, and dashes
+    id: str
+
+    # List of associated image tags
+
+    def as_ser(self) -> dict:
+        return {"id": self.id}
+
+    @classmethod
+    def from_ser(cls, ser: dict) -> typing.Self:
+        return cls(id=ser["id"])
+
+
+class Geoguesser:
     # Channels subscribed to the game
     subscribed: set[int]
     # Channels with admin privileges
@@ -202,10 +236,10 @@ class Geoguesser():
         data = {
             "subscribed": list(self.subscribed),
             "admins": list(self.admins),
-            "images": { k:v.as_ser() for k,v in self.images.items() },
-            "closed_images": [ img.as_ser() for img in self.closed_images ],
+            "images": {k: v.as_ser() for k, v in self.images.items()},
+            "closed_images": [img.as_ser() for img in self.closed_images],
             "scores": self.scores,
-            "maxdist": self.maxdist
+            "maxdist": self.maxdist,
         }
         with open(JSON_PATH, "w+") as f:
             json.dump(data, f, indent=4)
@@ -215,25 +249,40 @@ class Geoguesser():
             data = json.load(f)
             self.subscribed = set(data["subscribed"])
             self.admins = set(data["admins"])
-            self.images = { tag: ImageGame.from_ser(ser) for tag, ser in data["images"].items() }
-            self.closed_images = [ ImageGame.from_ser(ser) for ser in data["closed_images"] ]
-            self.scores = { int(k):v for k,v in data["scores"].items() }
+            self.images = {
+                tag: ImageGame.from_ser(ser) for tag, ser in data["images"].items()
+            }
+            self.closed_images = [
+                ImageGame.from_ser(ser) for ser in data["closed_images"]
+            ]
+            self.scores = {int(k): v for k, v in data["scores"].items()}
             self.maxdist = data["maxdist"]
 
-    async def message_subscribers(self, *send_args, **send_kwargs) -> list[discord.Message]:
+    async def message_subscribers(
+        self, *send_args, **send_kwargs
+    ) -> list[discord.Message]:
         return await self.message_channels(self.subscribed, *send_args, **send_kwargs)
-    
+
     async def message_admins(self, *send_args, **send_kwargs) -> list[discord.Message]:
         return await self.message_channels(self.admins, *send_args, **send_kwargs)
-    
-    async def message_channels(self, channels: typing.Iterable[int], *send_args, **send_kwargs) -> list[discord.Message]:
+
+    async def message_channels(
+        self, channels: typing.Iterable[int], *send_args, **send_kwargs
+    ) -> list[discord.Message]:
         messages: list[discord.Message] = []
         for id in channels:
             channel = await get_channel(self.bot, id)
             messages.append(await channel.send(*send_args, **send_kwargs))
         return messages
-            
-    async def new_image(self, image_bytes: io.BytesIO, image_ext: str, latitude: float, longitude: float, tag: typing.Optional[str]) -> str:
+
+    async def new_image(
+        self,
+        image_bytes: io.BytesIO,
+        image_ext: str,
+        latitude: float,
+        longitude: float,
+        tag: typing.Optional[str],
+    ) -> str:
         real_tag = self.generate_tag() if tag is None else tag
 
         filename = real_tag + "." + image_ext
@@ -247,18 +296,24 @@ class Geoguesser():
             messages.append(
                 await channel.send(
                     content=f"# New image to guess:\n### Image tag: `{real_tag}`",
-                    file=discord.File(image_bytes, filename)
+                    file=discord.File(image_bytes, filename),
                 )
             )
-        image_messages: list[MessageID] = [MessageID(message=message) for message in messages]
+        image_messages: list[MessageID] = [
+            MessageID(message=message) for message in messages
+        ]
 
         guess_command = f"/geo guess {real_tag} <lat> <long>"
         guesshint_messages = await self.message_subscribers(
             content=f"### To guess, run `{guess_command}`\nSubmissions are **open**! 🟩"
         )
-        guesshint_messages = [MessageID(message=message) for message in guesshint_messages]
+        guesshint_messages = [
+            MessageID(message=message) for message in guesshint_messages
+        ]
 
-        img = ImageGame(latitude, longitude, real_tag, filename, image_messages, guesshint_messages)
+        img = ImageGame(
+            latitude, longitude, real_tag, filename, image_messages, guesshint_messages
+        )
         self.images[real_tag] = img
 
         self.save()
@@ -267,8 +322,10 @@ class Geoguesser():
 
     def generate_tag(self) -> str:
         return self.tag_bank.get_tag(self.images)
-    
-    def new_guess(self, message: discord.Message, tag: str, lat: float, long: float) -> Guess:
+
+    def new_guess(
+        self, message: discord.Message, tag: str, lat: float, long: float
+    ) -> Guess:
         if tag not in self.images:
             raise error.UnknownTag(tag, self.images.keys())
         image = self.images[tag]
@@ -281,7 +338,7 @@ class Geoguesser():
         self.save()
 
         return guess
-    
+
     async def close_image(self, tag: str):
         if tag not in self.images:
             raise error.UnknownTag(tag, self.images.keys())
@@ -293,19 +350,25 @@ class Geoguesser():
             await message.edit(content="Submissions are **closed**! 🟥")
 
         result_msg = f"Submissions have closed for tag `{tag}`.\n## Guesses:"
-        for user,guess in image.guesses.items():
-            dist = distance.distance((guess.latitude, guess.longitude), (image.latitude, image.longitude))
+        for user, guess in image.guesses.items():
+            dist = distance.distance(
+                (guess.latitude, guess.longitude), (image.latitude, image.longitude)
+            )
             score = self.calc_score(dist.meters)
             self.add_score(user, score)
-            dist_str = f"{dist.meters:.1f}m" if dist.meters < 1000 else f"{dist.kilometers:.1f}km"
+            dist_str = (
+                f"{dist.meters:.1f}m"
+                if dist.meters < 1000
+                else f"{dist.kilometers:.1f}km"
+            )
             result_msg += f"\n<@{user}> guessed {print_coord_tuple(guess.latitude, guess.longitude)} ({dist_str}, score +{score})."
-        
+
         result_msg += f"\n### The actual location was {google_maps_linked_url(image.latitude, image.longitude)}."
 
         for msg in image.image_messages:
             message = await msg.get_message(self.bot)
             await message.reply(result_msg)
-        
+
         self.save()
 
         os.remove(pathlib.Path(IMAGES_PATH, image.filename))
@@ -323,7 +386,7 @@ class Geoguesser():
             self.scores[user] = 0
         self.scores[user] += score
 
-    def set_maxdist(self, maxdist: float=WORLD_MAXDIST):
+    def set_maxdist(self, maxdist: float = WORLD_MAXDIST):
         self.maxdist = maxdist
         self.save()
 

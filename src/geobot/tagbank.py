@@ -10,7 +10,8 @@ DATA_PATH = pathlib.Path(PARENT_PATH, "data")
 WORDS_PATH = pathlib.Path(DATA_PATH, "WORDS.txt")
 MAX_SELECT_ITERATIONS = 1000
 
-class TagBank():
+
+class TagBank:
     tags: list[str]
     words_file: os.PathLike
 
@@ -20,7 +21,9 @@ class TagBank():
 
     def load(self):
         with open(self.words_file) as f:
-            self.tags = [line.strip() for line in f.readlines() if len(line.strip()) > 0]
+            self.tags = [
+                line.strip() for line in f.readlines() if len(line.strip()) > 0
+            ]
 
     def get_tag(self, exclude: typing.Optional[typing.Iterable[str]]) -> str:
         if exclude is None:
@@ -31,4 +34,3 @@ class TagBank():
                 if choice not in exclude:
                     return choice
             raise error.TagSelectFailure()
-        

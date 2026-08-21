@@ -9,9 +9,12 @@ import logging
 from . import geoguesser
 from . import error
 
-discord_handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="a")
+discord_handler = logging.FileHandler(
+    filename="discord.log", encoding="utf-8", mode="a"
+)
 
 TOKEN_PATH = pathlib.Path(pathlib.Path(__file__).parent, "token")
+
 
 def start():
     intents = discord.Intents.default()
@@ -28,25 +31,28 @@ def start():
             if ctx.channel.id not in GEO.subscribed:
                 raise error.SubscriberOnly()
             return True
+
         return commands.check(predicate)
-        
+
     # Check for only channels with admin privileges
     def admin_only():
         async def predicate(ctx: commands.Context):
             return ctx.channel.id in GEO.admins
+
         return commands.check(predicate)
 
-    # Check for either subscribers or adming
+    # Check for either subscribers or admin
     def subscriber_admin_only():
         async def predicate(ctx: commands.Context):
             return ctx.channel.id in GEO.admins or ctx.channel.id in GEO.subscribed
+
         return commands.check(predicate)
 
-    @bot.hybrid_group()    
+    @bot.hybrid_group()
     async def geo(ctx: commands.Context):
         pass
 
-    @geo.command(description="Reply with \"Pong!\".")
+    @geo.command(description='Reply with "Pong!".')
     async def ping(ctx: commands.Context):
         await ctx.reply("Pong!")
 
@@ -54,9 +60,11 @@ def start():
     @admin_only()
     async def sync(ctx: commands.Context):
         if ctx.guild is not None:
-            bot.tree.copy_global_to(guild=ctx.guild) # type: ignore
+            bot.tree.copy_global_to(guild=ctx.guild)  # type: ignore
         synced = await bot.tree.sync(guild=None)
-        await ctx.reply(f"Synced commands/groups {', '.join('`' + s.name + '`' for s in synced)} to all channels.")
+        await ctx.reply(
+            f"Synced commands/groups {', '.join('`' + s.name + '`' for s in synced)} to all channels."
+        )
 
     @geo.command(name="subscribe", description="Subscribe this channel to geobot.")
     async def subscribe(ctx: commands.Context):
@@ -66,7 +74,9 @@ def start():
             GEO.subscribe(ctx.channel.id)
             await ctx.reply("This channel is now subscribed to the geobot!")
 
-    @geo.command(name="unsubscribe", description="Unsubscribe this channel from geobot.")
+    @geo.command(
+        name="unsubscribe", description="Unsubscribe this channel from geobot."
+    )
     @subscriber_only()
     async def unsubscribe(ctx: commands.Context):
         GEO.unsubscribe(ctx.channel.id)
@@ -79,9 +89,7 @@ def start():
     @subscriber_only()
     async def guess(ctx: commands.Context, tag: str, latitude: float, longitude: float):
         guess = GEO.new_guess(ctx.message, tag, latitude, longitude)
-        await ctx.reply(
-            f"You have guessed {guess.google_maps_linked_url()}."
-        )
+        await ctx.reply(f"You have guessed {guess.google_maps_linked_url()}.")
 
     @geo.command(name="list", description="List all active image tags.")
     @subscriber_admin_only()
@@ -97,29 +105,46 @@ def start():
     @admin_only()
     async def message_all(ctx: commands.Context, message: str):
         await GEO.message_subscribers(message)
-            
-    @bot.command(name="image", description="Create an image tag for the attached image.")
-    @discord.app_commands.describe(latitude="Latitude (in degrees) where image was taken.")
-    @discord.app_commands.describe(longitude="Longitude (in degrees) where image was taken.")
-    @discord.app_commands.describe(tag="The tag to use for this image. If not provided, one will be randomly generated.")
-    @admin_only()
-    async def create_image(ctx: commands.Context, latitude: float, longitude: float, tag: typing.Optional[str]):
-        images = [a for a in ctx.message.attachments if a.content_type is not None and a.content_type.startswith("image")]
+
+    @bot.command(
+        name="image", description="Create an image tag for the attached image."
+    )
+    @discord.app_commands.describe(
+        latitude="Latitude (in degrees) where image was taken."
+    )
+    @discord.app_commands.describe(
+        longitude="Longitude (in degrees) where image was taken."
+    )
+    @discord.app_commands.describe(
+        tag="The tag to use for this image. If not provided, one will be randomly generated."
+    )
+    @subscriber_admin_only()
+    async def create_image(
+        ctx: commands.Context,
+        latitude: float,
+        longitude: float,
+        tag: typing.Optional[str],
+    ):
+        images = [
+            a
+            for a in ctx.message.attachments
+            if a.content_type is not None and a.content_type.startswith("image")
+        ]
         if len(images) == 0:
             await ctx.reply("Please attach an image.")
             return
         if len(images) > 1:
             await ctx.reply("Please attach exactly one image.")
             return
-        
+
         if tag is not None and not tag.isalnum():
             await ctx.reply("Image tags must be alphanumeric.")
             return
-        
+
         if tag is not None and tag in GEO.images:
             await ctx.reply(f"Tag `{tag}` is already in use.")
             return
-            
+
         image = images[0]
         ext = image.filename.split(".")[-1]
 
@@ -148,7 +173,7 @@ def start():
     @subscriber_admin_only()
     async def show_scores(ctx: commands.Context):
         ret_str = "## Current scores are:"
-        for user,score in GEO.scores.items():
+        for user, score in GEO.scores.items():
             ret_str += f"\n<@{user}>: {score}"
         await ctx.reply(ret_str)
 
@@ -159,9 +184,14 @@ def start():
     @map.command(name="reset", description="Reset map to world map default.")
     async def reset_map(ctx: commands.Context):
         GEO.set_maxdist()
-        await ctx.reply(f"Maximum map distance has been set to {GEO.maxdist} (world map default).")
+        await ctx.reply(
+            f"Maximum map distance has been set to {GEO.maxdist} (world map default)."
+        )
 
-    @map.command(name="set", description="Reset map to the given max distance (diagonal length of map rectangle).")
+    @map.command(
+        name="set",
+        description="Reset map to the given max distance (diagonal length of map rectangle).",
+    )
     @discord.app_commands.describe(maxdist="Diagonal length of the map rectangle.")
     async def set_map(ctx: commands.Context, maxdist: float):
         GEO.set_maxdist(maxdist)
@@ -176,6 +206,7 @@ def start():
         token = f.read().strip()
 
     bot.run(token, reconnect=True, log_handler=discord_handler)
+
 
 if __name__ == "__main__":
     start()

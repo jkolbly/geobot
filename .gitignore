@@ -204,3 +204,6 @@ data.json
 ### Log file
 error.log
 discord.log
+
+### Images folder
+src/geobot/data/images

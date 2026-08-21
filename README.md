@@ -6,6 +6,8 @@ A Discord bot for playing Geoguesser with friends.
 
 First, put the bot's API token into `./src/geobot/token`.
 
+Then, install with `poetry install`.
+
 Then, `poetry run start` to start the bot.
 
 Be sure to invite the bot with permissions `bot` and `applications.commands`.
