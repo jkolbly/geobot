@@ -326,3 +326,6 @@ class Geoguesser():
     def set_maxdist(self, maxdist: float=WORLD_MAXDIST):
         self.maxdist = maxdist
         self.save()
+
+
+os.makedirs(IMAGES_PATH, exist_ok=True)
