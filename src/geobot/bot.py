@@ -186,7 +186,7 @@ def start():
     async def new_trip(ctx: commands.Context, id):
         await GEO.new_trip(id, player=ctx.message.author.id)
         await ctx.reply(
-            f"Created and selected a new trip with ID `{id}`.\nTo add images to this trip, message Geobot `/image <lat> <long>` with your image attached."
+            f"Created and selected a new trip with ID `{id}`.\nRun `/geo trip subscribe {id}` in all channels that you want to receive images from this trip.\nTo add images to this trip, message Geobot `/image <lat> <long>` with your image attached."
         )
 
     @trip.command(name="select", description="Select a trip.")
