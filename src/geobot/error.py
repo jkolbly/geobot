@@ -1,4 +1,5 @@
 from discord.ext import commands
+from discord import app_commands
 import traceback
 import sys
 import typing
@@ -32,6 +33,45 @@ class UnknownTag(Exception):
         self.available_tags = available_tags
 
 
+class InvalidTripId(Exception):
+    id: str
+
+    def __init__(self, id: str):
+        self.id = id
+
+
+class DuplicateTripID(Exception):
+    id: str
+
+    def __init__(self, id: str):
+        self.id = id
+
+
+class UnknownTripId(Exception):
+    id: str
+
+    def __init__(self, id: str):
+        self.id = id
+
+
+class NoTripSelected(Exception):
+    pass
+
+
+class NotTripOwner(Exception):
+    id: str
+
+    def __init__(self, id: str):
+        self.id = id
+
+
+class NotTripSubscriber(Exception):
+    id: str
+
+    def __init__(self, id: str):
+        self.id = id
+
+
 async def handle_error(ctx: commands.Context, error):
     if isinstance(error, SubscriberOnly):
         await ctx.reply(
@@ -39,7 +79,11 @@ async def handle_error(ctx: commands.Context, error):
         )
     elif isinstance(error, AdminOnly):
         await ctx.reply(f"This channel does not have geobot admin privileges.")
-    elif isinstance(error, commands.errors.CommandInvokeError):
+    elif isinstance(error, commands.errors.HybridCommandError):
+        await handle_error(ctx, error.original)
+    elif isinstance(error, commands.errors.CommandInvokeError) or isinstance(
+        error, app_commands.errors.CommandInvokeError
+    ):
         if isinstance(error.original, TagSelectFailure):
             await ctx.reply(f"Failed to generate a tag. Try supplying an unused tag.")
         elif isinstance(error.original, UnknownTag):
@@ -47,7 +91,32 @@ async def handle_error(ctx: commands.Context, error):
                 f"`{tag}`" for tag in error.original.available_tags
             )
             await ctx.reply(
-                f"`{error.original.tag}` is not the tag of an active geo image.\nActive tags are: {available_tags_str}."
+                f"`{error.original.tag}` is not the tag of an active geo image.\n"
+                + (
+                    "There are no active tags."
+                    if len(error.original.available_tags) == 0
+                    else f"Active tags are: {available_tags_str}."
+                )
+            )
+        elif isinstance(error.original, InvalidTripId):
+            await ctx.reply(
+                f"`{error.original.id}` is not a valid trip ID. Trip IDs can only contain letters, numbers, and dashes."
+            )
+        elif isinstance(error.original, DuplicateTripID):
+            await ctx.reply(f"`{error.original.id}` is already the ID of a trip.")
+        elif isinstance(error.original, UnknownTripId):
+            await ctx.reply(f"`{error.original.id}` is not the ID of a trip.")
+        elif isinstance(error.original, NoTripSelected):
+            await ctx.reply(
+                f"You must select a trip to perform this action.\nRun `/geo trip select <trip ID>` to select a trip.\nIf you are performing this action on images made on or before 8/20/2026, run `/geo trip select default`."
+            )
+        elif isinstance(error.original, NotTripOwner):
+            await ctx.reply(
+                f"You can only perform this action when you are an owner of your selected trip. You are not an owner of trip `{id}`."
+            )
+        elif isinstance(error.original, NotTripSubscriber):
+            await ctx.reply(
+                f"This channel is not subscribed to trip `{id}`. Subscribe with `/geo trip subscribe {id}`"
             )
         else:
             logger.exception(

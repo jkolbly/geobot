@@ -7,6 +7,7 @@ import typing
 from geopy import distance
 import os
 import math
+import re
 
 from . import tagbank
 from . import error
@@ -18,6 +19,8 @@ PARENT_PATH = pathlib.Path(__file__).parent
 DATA_PATH = pathlib.Path(PARENT_PATH, "data")
 JSON_PATH = pathlib.Path(DATA_PATH, "data.json")
 IMAGES_PATH = pathlib.Path(DATA_PATH, "images")
+
+DEFAULT_TRIP = "default"
 
 
 # The information needed to uniquely ID a message
@@ -119,6 +122,9 @@ class ImageGame:
     # Game tag
     tag: str
 
+    # ID of this image's trip
+    trip: str
+
     # The messages containing the image
     image_messages: list[MessageID]
     # The messages that say the command for guessing
@@ -136,6 +142,7 @@ class ImageGame:
         image_messages: list[MessageID],
         guesshint_messages: list[MessageID],
         guesses: dict[int, Guess] | None = None,
+        trip: str | None = None,
     ):
         self.latitude = lat
         self.longitude = long
@@ -144,6 +151,7 @@ class ImageGame:
         self.image_messages = image_messages
         self.guesshint_messages = guesshint_messages
         self.guesses = {} if guesses is None else guesses
+        self.trip = DEFAULT_TRIP if trip is None else trip
 
     def as_ser(self) -> dict:
         return {
@@ -154,6 +162,7 @@ class ImageGame:
             "image_messages": [m.as_ser() for m in self.image_messages],
             "guesshint_messages": [m.as_ser() for m in self.guesshint_messages],
             "guesses": {user: guess.as_ser() for user, guess in self.guesses.items()},
+            "trip": self.trip,
         }
 
     @classmethod
@@ -171,6 +180,7 @@ class ImageGame:
                 int(user): Guess.from_ser(guess)
                 for user, guess in ser["guesses"].items()
             },
+            trip=ser.get("trip"),
         )
 
 
@@ -180,13 +190,49 @@ class Trip:
     id: str
 
     # List of associated image tags
+    images: dict[str, ImageGame]
+
+    # Images for this trip that have been closed
+    closed_images: list[ImageGame]
+
+    # Users that own this trip
+    owners: list[int]
+
+    # Channels subscribed to this trip
+    subscribed: set[int]
+
+    def __init__(
+        self,
+        id: str = DEFAULT_TRIP,
+        images: typing.Optional[dict[str, ImageGame]] = None,
+        closed_images: typing.Optional[list[ImageGame]] = None,
+        owners: typing.Optional[list[int]] = None,
+        subscribed: typing.Optional[set[int]] = None,
+    ):
+        self.id = id
+        self.images = {} if images is None else images
+        self.closed_images = [] if closed_images is None else closed_images
+        self.owners = [] if owners is None else owners
+        self.subscribed = set() if subscribed is None else subscribed
 
     def as_ser(self) -> dict:
-        return {"id": self.id}
+        return {
+            "id": self.id,
+            "images": {k: v.as_ser() for k, v in self.images.items()},
+            "closed_images": [img.as_ser() for img in self.closed_images],
+            "owners": self.owners,
+            "subscribed": list(self.subscribed),
+        }
 
     @classmethod
     def from_ser(cls, ser: dict) -> typing.Self:
-        return cls(id=ser["id"])
+        return cls(
+            id=ser["id"],
+            images={tag: ImageGame.from_ser(s) for tag, s in ser["images"].items()},
+            closed_images=[ImageGame.from_ser(s) for s in ser["closed_images"]],
+            owners=[int(u) for u in ser["owners"]],
+            subscribed=set(ser["subscribed"]),
+        )
 
 
 class Geoguesser:
@@ -197,10 +243,6 @@ class Geoguesser:
 
     bot: commands.Bot
 
-    # Maps image tags to active image games
-    images: dict[str, ImageGame]
-    closed_images: list[ImageGame]
-
     tag_bank: tagbank.TagBank
 
     # Maps player IDs to scores since last reset
@@ -208,6 +250,12 @@ class Geoguesser:
 
     # Largest distance on current map
     maxdist: float
+
+    # All active and inactive trips
+    trips: dict[str, Trip]
+
+    # Maps player IDs to their currently selected trip
+    selected_trips: dict[int, str]
 
     def __init__(self, bot):
         self.bot = bot
@@ -217,10 +265,10 @@ class Geoguesser:
         except FileNotFoundError:
             self.subscribed = set()
             self.admins = set([OWNER_CHANNEL])
-            self.images = {}
-            self.closed_images = []
             self.scores = {}
             self.maxdist = WORLD_MAXDIST
+            self.trips = {}
+            self.selected_trips = {}
 
         self.tag_bank = tagbank.TagBank()
 
@@ -232,31 +280,62 @@ class Geoguesser:
         self.subscribed.remove(id)
         self.save()
 
+    def trip_subscribe(self, channel, trip):
+        if trip not in self.trips:
+            raise error.UnknownTripId(trip)
+        self.trips[trip].subscribed.add(channel)
+        self.save()
+
+    def trip_unsubscribe(self, channel, trip):
+        if trip not in self.trips:
+            raise error.UnknownTripId(trip)
+        if channel not in self.trips[trip].subscribed:
+            raise error.NotTripSubscriber(trip)
+        self.trips[trip].subscribed.remove(channel)
+        self.save()
+
     def save(self):
         data = {
             "subscribed": list(self.subscribed),
             "admins": list(self.admins),
-            "images": {k: v.as_ser() for k, v in self.images.items()},
-            "closed_images": [img.as_ser() for img in self.closed_images],
             "scores": self.scores,
             "maxdist": self.maxdist,
+            "trips": {id: trip.as_ser() for id, trip in self.trips.items()},
+            "selected_trips": self.selected_trips,
         }
         with open(JSON_PATH, "w+") as f:
             json.dump(data, f, indent=4)
 
     def load(self):
         with open(JSON_PATH) as f:
-            data = json.load(f)
+            data: dict = json.load(f)
             self.subscribed = set(data["subscribed"])
             self.admins = set(data["admins"])
-            self.images = {
-                tag: ImageGame.from_ser(ser) for tag, ser in data["images"].items()
-            }
-            self.closed_images = [
-                ImageGame.from_ser(ser) for ser in data["closed_images"]
-            ]
             self.scores = {int(k): v for k, v in data["scores"].items()}
             self.maxdist = data["maxdist"]
+            self.trips = {
+                id: Trip.from_ser(trip) for id, trip in data.get("trips", {}).items()
+            } or {DEFAULT_TRIP: Trip()}
+            self.selected_trips = {
+                int(k): v for k, v in data.get("selected_trips", {}).items()
+            } or {}
+
+            # Backwards compatibility
+            if "images" in data:
+                for tag, image in data["images"].items():
+                    self.trips[DEFAULT_TRIP].images[tag] = ImageGame.from_ser(image)
+            if "closed_images" in data:
+                for image in data["closed_images"]:
+                    self.trips[DEFAULT_TRIP].closed_images.append(
+                        ImageGame.from_ser(image)
+                    )
+
+    async def message_trip_subscribers(
+        self, id, *send_args, **send_kwargs
+    ) -> list[discord.Message]:
+        return await self.message_channels(
+            self.trips[id].subscribed, *send_args, **send_kwargs
+        )
 
     async def message_subscribers(
         self, *send_args, **send_kwargs
@@ -275,22 +354,53 @@ class Geoguesser:
             messages.append(await channel.send(*send_args, **send_kwargs))
         return messages
 
+    async def new_trip(self, id: str, player: int):
+        if not id or not re.search("^[a-zA-Z0-9\\-]+$", id):
+            raise error.InvalidTripId(id)
+        if id in self.trips:
+            raise error.DuplicateTripID(id)
+
+        self.trips[id] = Trip(id=id, owners=[player])
+
+        await self.select_trip(player, id, skip_save=True)
+
+        self.save()
+
+    async def select_trip(self, player: int, id: str, skip_save: bool = False):
+        if id not in self.trips:
+            raise error.UnknownTripId(id)
+        self.selected_trips[player] = id
+        if not skip_save:
+            self.save()
+
+    def get_selected_trip(self, player: int, require_owner: bool = False):
+        if player not in self.selected_trips:
+            raise error.NoTripSelected()
+        trip = self.selected_trips[player]
+        if require_owner and player not in self.trips[trip].owners:
+            raise error.NotTripOwner(trip)
+        return trip
+
     async def new_image(
         self,
+        player: int,
         image_bytes: io.BytesIO,
         image_ext: str,
         latitude: float,
         longitude: float,
         tag: typing.Optional[str],
     ) -> str:
-        real_tag = self.generate_tag() if tag is None else tag
+        trip = self.get_selected_trip(player, require_owner=True)
+        real_tag = self.generate_tag(trip) if tag is None else tag
 
         filename = real_tag + "." + image_ext
-        with open(pathlib.Path(IMAGES_PATH, filename), "wb+") as f:
+        trip_path = pathlib.Path(IMAGES_PATH, trip)
+        os.makedirs(trip_path, exist_ok=True)
+        with open(pathlib.Path(trip_path, filename), "wb+") as f:
             f.write(image_bytes.getbuffer())
 
         messages: list[discord.Message] = []
-        for id in self.subscribed:
+        for id in self.trips[trip].subscribed:
             channel = await get_channel(self.bot, id)
             image_bytes.seek(0)
             messages.append(
@@ -304,31 +414,40 @@ class Geoguesser:
         ]
 
         guess_command = f"/geo guess {real_tag} <lat> <long>"
-        guesshint_messages = await self.message_subscribers(
-            content=f"### To guess, run `{guess_command}`\nSubmissions are **open**! 🟩"
+        guesshint_messages = await self.message_trip_subscribers(
+            trip,
+            content=f"### To guess, run `{guess_command}`\nSubmissions are **open**! 🟩",
         )
         guesshint_messages = [
             MessageID(message=message) for message in guesshint_messages
         ]
 
         img = ImageGame(
-            latitude, longitude, real_tag, filename, image_messages, guesshint_messages
+            latitude,
+            longitude,
+            real_tag,
+            filename,
+            image_messages,
+            guesshint_messages,
+            trip=trip,
         )
-        self.images[real_tag] = img
+        self.trips[trip].images[real_tag] = img
 
         self.save()
 
         return real_tag
 
-    def generate_tag(self) -> str:
-        return self.tag_bank.get_tag(self.images)
+    def generate_tag(self, trip: str) -> str:
+        return self.tag_bank.get_tag(self.trips[trip].images)
 
     def new_guess(
         self, message: discord.Message, tag: str, lat: float, long: float
     ) -> Guess:
-        if tag not in self.images:
-            raise error.UnknownTag(tag, self.images.keys())
-        image = self.images[tag]
+        trip = self.trips[self.get_selected_trip(message.author.id, require_owner=True)]
+
+        if tag not in trip.images:
+            raise error.UnknownTag(tag, trip.images.keys())
+        image = trip.images[tag]
 
         dist = distance.distance((lat, long), (image.latitude, image.longitude)).meters
 

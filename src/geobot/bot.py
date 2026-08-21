@@ -86,13 +86,11 @@ def start():
     @discord.app_commands.describe(tag="The tag to guess for.")
     @discord.app_commands.describe(latitude="Latitude (in degrees) of guess.")
     @discord.app_commands.describe(longitude="Longitude (in degrees) of guess.")
-    @subscriber_only()
     async def guess(ctx: commands.Context, tag: str, latitude: float, longitude: float):
         guess = GEO.new_guess(ctx.message, tag, latitude, longitude)
         await ctx.reply(f"You have guessed {guess.google_maps_linked_url()}.")
 
     @geo.command(name="list", description="List all active image tags.")
-    @subscriber_admin_only()
     async def list_active(ctx: commands.Context):
         if len(GEO.images) > 0:
             tags_str = ", ".join(f"`{tag}`" for tag in GEO.images)
@@ -118,7 +116,6 @@ def start():
     @discord.app_commands.describe(
         tag="The tag to use for this image. If not provided, one will be randomly generated."
     )
-    @subscriber_admin_only()
     async def create_image(
         ctx: commands.Context,
         latitude: float,
@@ -151,14 +148,15 @@ def start():
         async with aiohttp.ClientSession() as session:
             async with session.get(image.url) as response:
                 data = io.BytesIO(await response.read())
-                real_tag = await GEO.new_image(data, ext, latitude, longitude, tag)
+                real_tag = await GEO.new_image(
+                    ctx.message.author.id, data, ext, latitude, longitude, tag
+                )
                 await ctx.reply(
                     f"Created new image with tag `{real_tag}`.\nActual location: {geoguesser.google_maps_linked_url(latitude, longitude)}."
                 )
 
     @geo.command(name="close", description="Close an image tag.")
     @discord.app_commands.describe(tag="The tag to close.")
-    @subscriber_admin_only()
     async def close_image(ctx: commands.Context, tag: str):
         await GEO.close_image(tag)
         await ctx.reply(f"Tag `{tag}` has been closed.")
@@ -176,6 +174,46 @@ def start():
         for user, score in GEO.scores.items():
             ret_str += f"\n<@{user}>: {score}"
         await ctx.reply(ret_str)
+
+    @geo.group()
+    async def trip(ctx: commands.Context):
+        pass
+
+    @trip.command(name="new", description="Create a new trip.")
+    @discord.app_commands.describe(
+        id="Unique ID of this trip. May contain letters, numbers, and dashes."
+    )
+    async def new_trip(ctx: commands.Context, id):
+        await GEO.new_trip(id, player=ctx.message.author.id)
+        await ctx.reply(
+            f"Created and selected a new trip with ID `{id}`.\nTo add images to this trip, message Geobot `/image <lat> <long>` with your image attached."
+        )
+
+    @trip.command(name="select", description="Select a trip.")
+    @discord.app_commands.describe(
+        id="Unique ID of this trip. May contain letters, numbers, and dashes."
+    )
+    async def select_trip(ctx: commands.Context, id):
+        await GEO.select_trip(ctx.message.author.id, id)
+        await ctx.reply(f"Selected trip `{id}`.")
+
+    @trip.command(name="subscribe", description="Subscribe this channel to a trip.")
+    @discord.app_commands.describe(
+        id="Unique ID of this trip. May contain letters, numbers, and dashes."
+    )
+    async def trip_subscribe(ctx: commands.Context, id):
+        GEO.trip_subscribe(ctx.channel.id, id)
+        await ctx.reply(f"This channel is now subscribed to trip `{id}`!")
+
+    @trip.command(
+        name="unsubscribe", description="Unsubscribe this channel from geobot."
+    )
+    @discord.app_commands.describe(
+        id="Unique ID of this trip. May contain letters, numbers, and dashes."
+    )
+    async def trip_unsubscribe(ctx: commands.Context, id):
+        GEO.trip_unsubscribe(ctx.channel.id, id)
+        await ctx.reply(f"This channel is now unsubscribed from trip `{id}`!")
 
     @geo.group()
     async def map(ctx: commands.Context):
