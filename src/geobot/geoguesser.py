@@ -361,7 +361,7 @@ class Geoguesser:
                 if dist.meters < 1000
                 else f"{dist.kilometers:.1f}km"
             )
-            result_msg += f"\n<@{user}> guessed {print_coord_tuple(guess.latitude, guess.longitude)} ({dist_str}, score +{score})."
+            result_msg += f"\n<@{user}> guessed {google_maps_linked_url(guess.latitude, guess.longitude)} ({dist_str}, score +{score})."
 
         result_msg += f"\n### The actual location was {google_maps_linked_url(image.latitude, image.longitude)}."
 
