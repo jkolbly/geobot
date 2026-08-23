@@ -443,7 +443,7 @@ class Geoguesser:
     def new_guess(
         self, message: discord.Message, tag: str, lat: float, long: float
     ) -> Guess:
-        trip = self.trips[self.get_selected_trip(message.author.id, require_owner=True)]
+        trip = self.trips[self.get_selected_trip(message.author.id)]
 
         if tag not in trip.images:
             raise error.UnknownTag(tag, trip.images.keys())
