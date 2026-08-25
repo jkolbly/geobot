@@ -13,7 +13,12 @@ from . import tagbank
 from . import error
 
 OWNER_CHANNEL = 1373110407249657958
+
+# Corner-to-corner distance of the world map (in meters)
 WORLD_MAXDIST = 14916862
+
+# Distance under which you are guaranteed maximum points
+WORLD_MINDIST = 10
 
 PARENT_PATH = pathlib.Path(__file__).parent
 DATA_PATH = pathlib.Path(PARENT_PATH, "data")
@@ -505,7 +510,10 @@ class Geoguesser:
         os.remove(pathlib.Path(IMAGES_PATH, image.filename))
 
     def calc_score(self, distance: float) -> int:
-        return round(5000 * math.exp(-10 * distance / self.maxdist))
+        if distance < WORLD_MINDIST:
+            return 5000
+        else:
+            return round(5000 * math.exp(-10 * distance / self.maxdist))
 
     async def reset_scores(self):
         self.scores = {}
