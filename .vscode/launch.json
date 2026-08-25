@@ -1,0 +1,19 @@
+{
+    "version": "0.1",
+    "configurations": [
+        {
+            "name": "Python: Poetry",
+            "type": "python",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/Scripts/python3.exe",
+            "module": "geobot.bot",
+            "args": [
+                "run",
+                "start"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}

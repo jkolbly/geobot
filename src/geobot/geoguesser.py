@@ -461,6 +461,15 @@ class Geoguesser:
 
         return guess
 
+    def get_image(self, tag: str) -> ImageGame:
+        for trip in self.trips.values():
+            if tag in trip.images:
+                return trip.images[tag]
+        raise error.UnknownTag(tag, self.active_tags())
+
+    def get_guessers(self, tag: str) -> list[int]:
+        return [guesser for guesser in self.get_image(tag).guesses]
+
     async def close_image(self, tag: str):
         if tag not in self.images:
             raise error.UnknownTag(tag, self.images.keys())

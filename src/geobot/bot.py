@@ -175,6 +175,17 @@ def start():
             ret_str += f"\n<@{user}>: {score}"
         await ctx.reply(ret_str)
 
+    @geo.command(name="guessers", description="List who has guessed a tag.")
+    @discord.app_commands.describe(tag="The tag to list guessers of.")
+    async def list_guessers(ctx: commands.Context, tag: str):
+        guessers = GEO.get_guessers(tag)
+        if len(guessers) > 0:
+            await ctx.reply(
+                f"The following people have guessed for tag `{tag}`:\n* {"\n* ".join([f"<@{guesser}>" for guesser in GEO.get_guessers(tag)])}"
+            )
+        else:
+            await ctx.reply(f"Nobody has guessed for tag `{tag}`.")
+
     @geo.group()
     async def trip(ctx: commands.Context):
         pass
