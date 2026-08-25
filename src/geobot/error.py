@@ -112,11 +112,11 @@ async def handle_error(ctx: commands.Context, error):
             )
         elif isinstance(error.original, NotTripOwner):
             await ctx.reply(
-                f"You can only perform this action when you are an owner of your selected trip. You are not an owner of trip `{id}`."
+                f"You can only perform this action when you are an owner of your selected trip. You are not an owner of trip `{error.original.id}`."
             )
         elif isinstance(error.original, NotTripSubscriber):
             await ctx.reply(
-                f"This channel is not subscribed to trip `{id}`. Subscribe with `/geo trip subscribe {id}`"
+                f"This channel is not subscribed to trip `{error.original.id}`. Subscribe with `/geo trip subscribe {error.original.id}`"
             )
         else:
             logger.exception(
