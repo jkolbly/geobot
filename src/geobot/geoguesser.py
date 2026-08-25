@@ -391,7 +391,7 @@ class Geoguesser:
         tag: typing.Optional[str],
     ) -> str:
         trip = self.get_selected_trip(player, require_owner=True)
-        real_tag = self.generate_tag(trip) if tag is None else tag
+        real_tag = self.generate_tag() if tag is None else tag
 
         filename = real_tag + "." + image_ext
         trip_path = pathlib.Path(IMAGES_PATH, trip)
@@ -437,8 +437,11 @@ class Geoguesser:
 
         return real_tag
 
-    def generate_tag(self, trip: str) -> str:
-        return self.tag_bank.get_tag(self.trips[trip].images)
+    def active_tags(self) -> list[str]:
+        return [tag for trip in self.trips for tag in self.trips[trip].images]
+
+    def generate_tag(self) -> str:
+        return self.tag_bank.get_tag(self.active_tags())
 
     def new_guess(
         self, message: discord.Message, tag: str, lat: float, long: float
