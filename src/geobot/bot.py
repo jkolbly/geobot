@@ -182,7 +182,7 @@ def start():
     @geo.command(name="close", description="Close an image tag.")
     @discord.app_commands.describe(tag="The tag to close.")
     async def close_image(ctx: commands.Context, tag: str):
-        await GEO.close_image(tag)
+        await GEO.close_image(ctx.message.author.id, tag)
         await ctx.reply(f"Tag `{tag}` has been closed.")
 
     @geo.command(name="reset", description="Reset all scores.")
@@ -190,14 +190,6 @@ def start():
     async def reset_scores(ctx: commands.Context):
         await GEO.reset_scores()
         await ctx.reply(f"Scores have been reset.")
-
-    @geo.command(name="scores", description="List current scores.")
-    @subscriber_admin_only()
-    async def show_scores(ctx: commands.Context):
-        ret_str = "## Current scores are:"
-        for user, score in GEO.scores.items():
-            ret_str += f"\n<@{user}>: {score}"
-        await ctx.reply(ret_str)
 
     @geo.command(name="guessers", description="List who has guessed a tag.")
     @discord.app_commands.describe(tag="The tag to list guessers of.")
@@ -250,25 +242,20 @@ def start():
         GEO.trip_unsubscribe(ctx.channel.id, id)
         await ctx.reply(f"This channel is now unsubscribed from trip `{id}`!")
 
-    @geo.group()
-    async def map(ctx: commands.Context):
-        pass
-
-    @map.command(name="reset", description="Reset map to world map default.")
-    async def reset_map(ctx: commands.Context):
-        GEO.set_maxdist()
-        await ctx.reply(
-            f"Maximum map distance has been set to {GEO.maxdist} (world map default)."
-        )
-
-    @map.command(
-        name="set",
-        description="Reset map to the given max distance (diagonal length of map rectangle).",
+    @trip.command(name="scores", description="List current scores.")
+    @discord.app_commands.describe(
+        id="Unique ID of the trip. May contain letters, numbers, and dashes."
     )
-    @discord.app_commands.describe(maxdist="Diagonal length of the map rectangle.")
-    async def set_map(ctx: commands.Context, maxdist: float):
-        GEO.set_maxdist(maxdist)
-        await ctx.reply(f"Maximum map distance has been set to {GEO.maxdist}.")
+    async def show_scores(ctx: commands.Context, id):
+        trip = GEO.get_trip(id)
+        ret_str = f"## Current scores for trip `{id}` are:"
+        scores = trip.calc_scores()
+        if len(scores) == 0:
+            await ctx.reply(f"## There are no scores yet for trip `{id}`.")
+            return
+        for user, score in scores.items():
+            ret_str += f"\n<@{user}>: {score}"
+        await ctx.reply(ret_str)
 
     @bot.event
     async def on_command_error(ctx: commands.Context, err):

@@ -87,6 +87,13 @@ def print_coord_tuple(lat: float, long: float):
     return f"{lat:.7f}, {long:.7f}"
 
 
+def calc_score(dist: float) -> int:
+    if dist < WORLD_MINDIST:
+        return 5000
+    else:
+        return round(5000 * math.exp(-10 * dist / WORLD_MAXDIST))
+
+
 class Guess:
     latitude: float
     longitude: float
@@ -220,6 +227,12 @@ class ImageGame:
     def add_guesshint_message(self, message: discord.Message):
         self.guesshint_messages.append(MessageID(message=message))
 
+    def calc_score(self, guess: Guess):
+        dist = distance.distance(
+            (guess.latitude, guess.longitude), (self.latitude, self.longitude)
+        )
+        return calc_score(dist.meters)
+
 
 # A collection of images (e.g. my Norway trip)
 class Trip:
@@ -271,6 +284,18 @@ class Trip:
             subscribed=set(ser["subscribed"]),
         )
 
+    # Compute a dict mapping player IDs to scores
+    def calc_scores(self) -> dict[int, int]:
+        scores = {}
+        for image in self.closed_images:
+            for guesser, guess in image.guesses.items():
+                score = image.calc_score(guess)
+                if guesser in scores:
+                    scores[guesser] += score
+                else:
+                    scores[guesser] = score
+        return scores
+
 
 class Geoguesser:
     # Channels subscribed to the game
@@ -284,9 +309,6 @@ class Geoguesser:
 
     # Maps player IDs to scores since last reset
     scores: dict[int, int]
-
-    # Largest distance on current map
-    maxdist: float
 
     # All active and inactive trips
     trips: dict[str, Trip]
@@ -303,7 +325,6 @@ class Geoguesser:
             self.subscribed = set()
             self.admins = set([OWNER])
             self.scores = {}
-            self.maxdist = WORLD_MAXDIST
             self.trips = {}
             self.selected_trips = {}
 
@@ -336,7 +357,6 @@ class Geoguesser:
             "subscribed": list(self.subscribed),
             "admins": list(self.admins),
             "scores": self.scores,
-            "maxdist": self.maxdist,
             "trips": {id: trip.as_ser() for id, trip in self.trips.items()},
             "selected_trips": self.selected_trips,
         }
@@ -349,7 +369,6 @@ class Geoguesser:
             self.subscribed = set(data["subscribed"])
             self.admins = set(data["admins"])
             self.scores = {int(k): v for k, v in data["scores"].items()}
-            self.maxdist = data["maxdist"]
             self.trips = {
                 id: Trip.from_ser(trip) for id, trip in data.get("trips", {}).items()
             } or {DEFAULT_TRIP: Trip()}
@@ -514,14 +533,19 @@ class Geoguesser:
                 return trip.images[tag]
         raise error.UnknownTag(tag, self.active_tags())
 
+    def get_trip(self, trip: str) -> Trip:
+        if trip in self.trips:
+            return self.trips[trip]
+        raise error.UnknownTripId(trip)
+
     def get_guessers(self, tag: str) -> list[int]:
         return [guesser for guesser in self.get_image(tag).guesses]
 
-    async def close_image(self, tag: str):
-        if tag not in self.images:
-            raise error.UnknownTag(tag, self.images.keys())
-        image = self.images.pop(tag)
-        self.closed_images.append(image)
+    async def close_image(self, player: int, tag: str):
+        image = self.get_image(tag)
+        trip = self.trips[image.trip]
+        if player not in trip.owners:
+            raise error.NotTripOwner(image.trip)
 
         for msg in image.guesshint_messages:
             message = await msg.get_message(self.bot)
@@ -532,7 +556,7 @@ class Geoguesser:
             dist = distance.distance(
                 (guess.latitude, guess.longitude), (image.latitude, image.longitude)
             )
-            score = self.calc_score(dist.meters)
+            score = calc_score(dist.meters)
             self.add_score(user, score)
             dist_str = (
                 f"{dist.meters:.1f}m"
@@ -545,17 +569,16 @@ class Geoguesser:
 
         for msg in image.image_messages:
             message = await msg.get_message(self.bot)
-            await message.reply(result_msg)
+            await message.reply(result_msg, suppress_embeds=True)
 
+        try:
+            os.remove(image.image_path())
+        except FileNotFoundError:
+            pass
+
+        trip.closed_images.append(image)
+        trip.images.pop(tag)
         self.save()
-
-        os.remove(pathlib.Path(IMAGES_PATH, image.filename))
-
-    def calc_score(self, distance: float) -> int:
-        if distance < WORLD_MINDIST:
-            return 5000
-        else:
-            return round(5000 * math.exp(-10 * distance / self.maxdist))
 
     async def reset_scores(self):
         self.scores = {}
@@ -566,10 +589,6 @@ class Geoguesser:
         if user not in self.scores:
             self.scores[user] = 0
         self.scores[user] += score
-
-    def set_maxdist(self, maxdist: float = WORLD_MAXDIST):
-        self.maxdist = maxdist
-        self.save()
 
 
 os.makedirs(IMAGES_PATH, exist_ok=True)
