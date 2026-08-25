@@ -163,6 +163,22 @@ def start():
                     f"Created new image with tag `{real_tag}`.\nActual location: {geoguesser.google_maps_linked_url(latitude, longitude)}."
                 )
 
+    @geo.command(
+        name="get-image", description="Resend the message containing an image."
+    )
+    @discord.app_commands.describe(tag="The tag of the image to send.")
+    async def get_image(ctx: commands.Context, tag: str):
+        image = GEO.get_image(tag)
+        image_bytes = image.get_image_bytes()
+        image.add_image_message(
+            await ctx.reply(
+                image.get_image_text(new=False),
+                file=discord.File(image_bytes, image.filename),
+            )
+        )
+        image.add_guesshint_message(await ctx.reply(image.get_image_guesshint()))
+        await GEO.save()
+
     @geo.command(name="close", description="Close an image tag.")
     @discord.app_commands.describe(tag="The tag to close.")
     async def close_image(ctx: commands.Context, tag: str):

@@ -188,6 +188,38 @@ class ImageGame:
             trip=ser.get("trip"),
         )
 
+    def image_path(self) -> pathlib.Path:
+        trip_path = pathlib.Path(IMAGES_PATH, self.trip)
+        return pathlib.Path(trip_path, self.filename)
+
+    def get_image_bytes(self) -> io.BytesIO:
+        # image = Image.open(self.image_path())
+        # with io.BytesIO() as image_bin:
+        #     image.save(image_bin, self.filename.split(".")[1])
+        #     image_bin.seek(0)
+        #     return image_bin
+        trip_path = pathlib.Path(IMAGES_PATH, self.trip)
+        os.makedirs(trip_path, exist_ok=True)
+        with open(self.image_path(), "rb") as f:
+            return io.BytesIO(f.read())
+
+    def get_image_text(self, new=True) -> str:
+        return (
+            "# New image to guess:\n"
+            if new
+            else "" + f"## Image tag: `{self.tag}`\n### Trip: `{self.trip}`"
+        )
+
+    def get_image_guesshint(self) -> str:
+        guess_command = f"/geo guess {self.tag} <lat> <long>"
+        return f"### To guess, run `{guess_command}`\nSubmissions are **open**! 🟩"
+
+    def add_image_message(self, message: discord.Message):
+        self.image_messages.append(MessageID(message=message))
+
+    def add_guesshint_message(self, message: discord.Message):
+        self.guesshint_messages.append(MessageID(message=message))
+
 
 # A collection of images (e.g. my Norway trip)
 class Trip:
@@ -367,7 +399,9 @@ class Geoguesser:
         self, channels: typing.Iterable[int], *send_args, **send_kwargs
     ) -> list[discord.Message]:
         return await self.message_channels(
-            [await get_channel(self.bot, id) for id in channels]
+            [await get_channel(self.bot, id) for id in channels],
+            *send_args,
+            **send_kwargs,
         )
 
     async def new_trip(self, id: str, player: int):
@@ -408,11 +442,22 @@ class Geoguesser:
     ) -> str:
         trip = self.get_selected_trip(player, require_owner=True)
         real_tag = self.generate_tag() if tag is None else tag
-
         filename = real_tag + "." + image_ext
+
+        img = ImageGame(
+            latitude,
+            longitude,
+            real_tag,
+            filename,
+            [],
+            [],
+            trip=trip,
+        )
+        self.trips[trip].images[real_tag] = img
+
         trip_path = pathlib.Path(IMAGES_PATH, trip)
         os.makedirs(trip_path, exist_ok=True)
-        with open(pathlib.Path(trip_path, filename), "wb+") as f:
+        with open(img.image_path(), "wb+") as f:
             f.write(image_bytes.getbuffer())
 
         messages: list[discord.Message] = []
@@ -421,33 +466,19 @@ class Geoguesser:
             image_bytes.seek(0)
             messages.append(
                 await channel.send(
-                    content=f"# New image to guess:\n### Image tag: `{real_tag}`",
+                    content=img.get_image_text(),
                     file=discord.File(image_bytes, filename),
                 )
             )
-        image_messages: list[MessageID] = [
-            MessageID(message=message) for message in messages
-        ]
+        img.image_messages = [MessageID(message=message) for message in messages]
 
-        guess_command = f"/geo guess {real_tag} <lat> <long>"
         guesshint_messages = await self.message_trip_subscribers(
             trip,
-            content=f"### To guess, run `{guess_command}`\nSubmissions are **open**! 🟩",
+            content=img.get_image_guesshint(),
         )
-        guesshint_messages = [
+        img.guesshint_messages = [
             MessageID(message=message) for message in guesshint_messages
         ]
-
-        img = ImageGame(
-            latitude,
-            longitude,
-            real_tag,
-            filename,
-            image_messages,
-            guesshint_messages,
-            trip=trip,
-        )
-        self.trips[trip].images[real_tag] = img
 
         self.save()
 
