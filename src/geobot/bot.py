@@ -37,7 +37,7 @@ def start():
     # Check for only channels with admin privileges
     def admin_only():
         async def predicate(ctx: commands.Context):
-            return ctx.channel.id in GEO.admins
+            return ctx.message.author.id in GEO.admins
 
         return commands.check(predicate)
 
@@ -103,6 +103,14 @@ def start():
     @admin_only()
     async def message_all(ctx: commands.Context, message: str):
         await GEO.message_subscribers(message)
+        await ctx.reply(f"Sent `{message}` to all subscribed channels.")
+
+    @geo.command(name="message-admins", description="Send a message to all admins.")
+    @discord.app_commands.describe(message="The message to send.")
+    @admin_only()
+    async def message_admins(ctx: commands.Context, message: str):
+        await GEO.message_admins(message)
+        await ctx.reply(f"Sent `{message}` to all admins.")
 
     @bot.command(
         name="image", description="Create an image tag for the attached image."

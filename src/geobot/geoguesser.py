@@ -12,7 +12,7 @@ import re
 from . import tagbank
 from . import error
 
-OWNER_CHANNEL = 1373110407249657958
+OWNER = 480515412182958080
 
 # Corner-to-corner distance of the world map (in meters)
 WORLD_MAXDIST = 14916862
@@ -269,7 +269,7 @@ class Geoguesser:
             self.load()
         except FileNotFoundError:
             self.subscribed = set()
-            self.admins = set([OWNER_CHANNEL])
+            self.admins = set([OWNER])
             self.scores = {}
             self.maxdist = WORLD_MAXDIST
             self.trips = {}
@@ -338,26 +338,37 @@ class Geoguesser:
     async def message_trip_subscribers(
         self, id, *send_args, **send_kwargs
     ) -> list[discord.Message]:
-        return await self.message_channels(
+        return await self.message_channel_ids(
             self.trips[id].subscribed, *send_args, **send_kwargs
         )
 
     async def message_subscribers(
         self, *send_args, **send_kwargs
     ) -> list[discord.Message]:
-        return await self.message_channels(self.subscribed, *send_args, **send_kwargs)
+        return await self.message_channel_ids(
+            self.subscribed, *send_args, **send_kwargs
+        )
 
     async def message_admins(self, *send_args, **send_kwargs) -> list[discord.Message]:
-        return await self.message_channels(self.admins, *send_args, **send_kwargs)
+        channels: list[discord.User] = [
+            await self.bot.get_user(admin).create_dm() for admin in self.admins
+        ]
+        return await self.message_channels(channels, *send_args, **send_kwargs)
 
     async def message_channels(
+        self,
+        channels: typing.Iterable[typing.Union[discord.TextChannel, discord.DMChannel]],
+        *send_args,
+        **send_kwargs,
+    ):
+        return [await channel.send(*send_args, **send_kwargs) for channel in channels]
+
+    async def message_channel_ids(
         self, channels: typing.Iterable[int], *send_args, **send_kwargs
     ) -> list[discord.Message]:
-        messages: list[discord.Message] = []
-        for id in channels:
-            channel = await get_channel(self.bot, id)
-            messages.append(await channel.send(*send_args, **send_kwargs))
-        return messages
+        return await self.message_channels(
+            [await get_channel(self.bot, id) for id in channels]
+        )
 
     async def new_trip(self, id: str, player: int):
         if not id or not re.search("^[a-zA-Z0-9\\-]+$", id):
