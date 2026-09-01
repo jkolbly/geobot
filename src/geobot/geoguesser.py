@@ -94,6 +94,11 @@ def calc_score(dist: float) -> int:
         return round(5000 * math.exp(-10 * dist / WORLD_MAXDIST))
 
 
+def get_image_bytes(path: os.PathLike) -> io.BytesIO:
+    with open(path, "rb") as f:
+        return io.BytesIO(f.read())
+
+
 class Guess:
     latitude: float
     longitude: float
@@ -195,15 +200,14 @@ class ImageGame:
             trip=ser.get("trip"),
         )
 
-    def image_path(self) -> pathlib.Path:
+    def image_path(self, makedirs=False) -> pathlib.Path:
         trip_path = pathlib.Path(IMAGES_PATH, self.trip)
+        if makedirs:
+            os.makedirs(trip_path, exist_ok=True)
         return pathlib.Path(trip_path, self.filename)
 
     def get_image_bytes(self) -> io.BytesIO:
-        trip_path = pathlib.Path(IMAGES_PATH, self.trip)
-        os.makedirs(trip_path, exist_ok=True)
-        with open(self.image_path(), "rb") as f:
-            return io.BytesIO(f.read())
+        return get_image_bytes(self.image_path())
 
     def get_image_text(self, new=True) -> str:
         return (
@@ -469,9 +473,7 @@ class Geoguesser:
         )
         self.trips[trip].images[real_tag] = img
 
-        trip_path = pathlib.Path(IMAGES_PATH, trip)
-        os.makedirs(trip_path, exist_ok=True)
-        with open(img.image_path(), "wb+") as f:
+        with open(img.image_path(makedirs=True), "wb+") as f:
             f.write(image_bytes.getbuffer())
 
         messages: list[discord.Message] = []
