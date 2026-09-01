@@ -200,11 +200,6 @@ class ImageGame:
         return pathlib.Path(trip_path, self.filename)
 
     def get_image_bytes(self) -> io.BytesIO:
-        # image = Image.open(self.image_path())
-        # with io.BytesIO() as image_bin:
-        #     image.save(image_bin, self.filename.split(".")[1])
-        #     image_bin.seek(0)
-        #     return image_bin
         trip_path = pathlib.Path(IMAGES_PATH, self.trip)
         os.makedirs(trip_path, exist_ok=True)
         with open(self.image_path(), "rb") as f:
