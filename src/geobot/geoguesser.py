@@ -504,6 +504,8 @@ class Geoguesser:
             filename,
             [],
             [],
+            None,
+            [],
             trip=trip,
         )
         self.trips[trip].images[real_tag] = img
@@ -603,9 +605,21 @@ class Geoguesser:
 
         result_msg += f"\n### The actual location was {google_maps_linked_url(image.latitude, image.longitude)}."
 
+        if image.description:
+            result_msg += f"\n## Description:\n{image.description}"
+
+        files = [
+            discord.File(get_image_bytes(filename), filename)
+            for filename in image.description_images
+        ]
+
         for msg in image.image_messages:
             message = await msg.get_message(self.bot)
-            await message.reply(result_msg, suppress_embeds=True)
+            await message.reply(
+                result_msg,
+                suppress_embeds=True,
+                files=files if len(files) > 0 else None,
+            )
 
         try:
             os.remove(image.image_path())
