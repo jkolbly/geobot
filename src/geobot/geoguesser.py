@@ -150,6 +150,11 @@ class ImageGame:
     # Maps users to guesses
     guesses: dict[int, Guess]
 
+    # Descriptive string to be revealed when image is closed
+    description: typing.Optional[str]
+    # Filenames of images to be revealed when image is closed
+    description_images: list[str]
+
     def __init__(
         self,
         lat: float,
@@ -158,6 +163,8 @@ class ImageGame:
         filename: str,
         image_messages: list[MessageID],
         guesshint_messages: list[MessageID],
+        description: typing.Optional[str],
+        description_images: list[str],
         guesses: dict[int, Guess] | None = None,
         trip: str | None = None,
     ):
@@ -169,6 +176,8 @@ class ImageGame:
         self.guesshint_messages = guesshint_messages
         self.guesses = {} if guesses is None else guesses
         self.trip = DEFAULT_TRIP if trip is None else trip
+        self.description = description
+        self.description_images = description_images
 
     def as_ser(self) -> dict:
         return {
@@ -180,6 +189,8 @@ class ImageGame:
             "guesshint_messages": [m.as_ser() for m in self.guesshint_messages],
             "guesses": {user: guess.as_ser() for user, guess in self.guesses.items()},
             "trip": self.trip,
+            "description": self.description,
+            "description_images": self.description_images,
         }
 
     @classmethod
@@ -193,6 +204,8 @@ class ImageGame:
             guesshint_messages=[
                 MessageID.from_ser(id) for id in ser["guesshint_messages"]
             ],
+            description=ser.get("description"),
+            description_images=ser.get("description_images", []),
             guesses={
                 int(user): Guess.from_ser(guess)
                 for user, guess in ser["guesses"].items()
@@ -231,6 +244,28 @@ class ImageGame:
             (guess.latitude, guess.longitude), (self.latitude, self.longitude)
         )
         return calc_score(dist.meters)
+
+    def _next_desc_image_path(self, ext: str) -> os.PathLike:
+        tag_path = pathlib.Path(IMAGES_PATH, self.trip, self.tag)
+        os.makedirs(tag_path, exist_ok=True)
+        return pathlib.Path(tag_path, f"{len(self.description_images)}.{ext}")
+
+    def add_desc_image(self, image_bytes: io.BytesIO, image_ext: str):
+        filename = self._next_desc_image_path(image_ext)
+        with open(filename, "wb+") as f:
+            f.write(image_bytes.getbuffer())
+        self.description_images.append(str(filename))
+
+    def clear_desc_images(self):
+        for image in reversed(self.description_images):
+            self.remove_desc_image(image)
+
+    def remove_desc_image(self, filename):
+        self.description_images.remove(filename)
+        try:
+            os.remove(filename)
+        except FileNotFoundError:
+            pass
 
 
 # A collection of images (e.g. my Norway trip)

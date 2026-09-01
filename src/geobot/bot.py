@@ -206,6 +206,30 @@ def start():
         else:
             await ctx.reply(f"Nobody has guessed for tag `{tag}`.")
 
+    @geo.command(name="describe", description="Add a description to an image tag.")
+    @discord.app_commands.describe(tag="The tag to describe.")
+    @discord.app_commands.describe(description="Description of the tag.")
+    @discord.app_commands.describe(
+        image="Optional image to reveal when the tag is closed."
+    )
+    async def describe(
+        ctx: commands.Context,
+        tag: str,
+        description: str,
+        image: typing.Optional[discord.Attachment],
+    ):
+        img = GEO.get_image(tag)
+        img.description = description
+        if image is not None:
+            ext = image.filename.split(".")[-1]
+            data = await get_image_bytes(image)
+            img.clear_desc_images()
+            img.add_desc_image(data, ext)
+        GEO.save()
+        await ctx.reply(
+            f"Updated the description for tag `{tag}`.\nUse `/geo get-description {tag}` to preview."
+        )
+
     @geo.group()
     async def trip(ctx: commands.Context):
         pass
