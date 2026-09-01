@@ -226,9 +226,7 @@ def start():
             img.clear_desc_images()
             img.add_desc_image(data, ext)
         GEO.save()
-        await ctx.reply(
-            f"Updated the description for tag `{tag}`.\nUse `/geo get-description {tag}` to preview."
-        )
+        await ctx.reply(f"Updated the description for tag `{tag}`.")
 
     @geo.group()
     async def trip(ctx: commands.Context):
