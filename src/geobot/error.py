@@ -112,7 +112,7 @@ async def handle_error(ctx: commands.Context, error):
             )
         elif isinstance(error.original, NotTripOwner):
             await ctx.reply(
-                f"You can only perform this action when you are an owner of your selected trip. You are not an owner of trip `{error.original.id}`."
+                f"You can only perform this action when you are an owner of the appropriate trip. You are not an owner of trip `{error.original.id}`."
             )
         elif isinstance(error.original, NotTripSubscriber):
             await ctx.reply(

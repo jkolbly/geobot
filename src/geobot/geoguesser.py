@@ -559,9 +559,13 @@ class Geoguesser:
 
         return guess
 
-    def get_image(self, tag: str) -> ImageGame:
+    def get_image(
+        self, tag: str, required_owner: typing.Optional[int] = None
+    ) -> ImageGame:
         for trip in self.trips.values():
             if tag in trip.images:
+                if required_owner and required_owner not in trip.owners:
+                    raise error.NotTripOwner(trip.id)
                 return trip.images[tag]
         raise error.UnknownTag(tag, self.active_tags())
 

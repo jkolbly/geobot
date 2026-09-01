@@ -218,7 +218,7 @@ def start():
         description: str,
         image: typing.Optional[discord.Attachment],
     ):
-        img = GEO.get_image(tag)
+        img = GEO.get_image(tag, required_owner=ctx.message.author.id)
         img.description = description
         if image is not None:
             ext = image.filename.split(".")[-1]
