@@ -586,6 +586,3 @@ class Geoguesser:
         if user not in self.scores:
             self.scores[user] = 0
         self.scores[user] += score
-
-
-os.makedirs(IMAGES_PATH, exist_ok=True)
