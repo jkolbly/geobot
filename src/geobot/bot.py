@@ -16,6 +16,12 @@ discord_handler = logging.FileHandler(
 TOKEN_PATH = pathlib.Path(pathlib.Path(__file__).parent, "token")
 
 
+async def get_image_bytes(image: discord.Attachment) -> io.BytesIO:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(image.url) as response:
+            return io.BytesIO(await response.read())
+
+
 def start():
     intents = discord.Intents.default()
     intents.message_content = True
@@ -152,16 +158,14 @@ def start():
 
         image = images[0]
         ext = image.filename.split(".")[-1]
+        data = await get_image_bytes(image)
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(image.url) as response:
-                data = io.BytesIO(await response.read())
-                real_tag = await GEO.new_image(
-                    ctx.message.author.id, data, ext, latitude, longitude, tag
-                )
-                await ctx.reply(
-                    f"Created new image with tag `{real_tag}`.\nActual location: {geoguesser.google_maps_linked_url(latitude, longitude)}."
-                )
+        real_tag = await GEO.new_image(
+            ctx.message.author.id, data, ext, latitude, longitude, tag
+        )
+        await ctx.reply(
+            f"Created new image with tag `{real_tag}`.\nActual location: {geoguesser.google_maps_linked_url(latitude, longitude)}."
+        )
 
     @geo.command(
         name="get-image", description="Resend the message containing an image."
